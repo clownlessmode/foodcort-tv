@@ -4,7 +4,7 @@ import { Orders } from "@widgets/orders";
 const getAdvertisements = async () => {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/foodcord/banner-main`,
+      `${process.env.NEXT_PUBLIC_API_URL}/banner-main`,
       { credentials: "include" }
     );
 
