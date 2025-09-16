@@ -1,0 +1,2 @@
+export const DEFAULT_IMAGE_DURATION_SEC = 5;
+export const DEFAULT_VIDEO_DURATION_SEC = 5;
