@@ -10,7 +10,7 @@ export class OrdersWebSocketClient {
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const connectionUrl = `${this.serverUrl}/orders`;
+      const connectionUrl = this.serverUrl;
       console.log("🔌 Попытка подключения к WebSocket:", connectionUrl);
       console.log("🔌 Server URL:", this.serverUrl);
 
