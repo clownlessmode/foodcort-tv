@@ -16,6 +16,7 @@ export class OrdersWebSocketClient {
 
       this.socket = io(connectionUrl, {
         transports: ["websocket"],
+        path: "/api/foodcord/socket.io",
         timeout: 20000,
         forceNew: true,
         reconnection: true,
