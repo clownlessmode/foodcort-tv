@@ -13,9 +13,11 @@ export class OrdersWebSocketClient {
       const connectionUrl = this.serverUrl;
       console.log("🔌 Попытка подключения к WebSocket:", connectionUrl);
       console.log("🔌 Server URL:", this.serverUrl);
+      console.log("🔌 Namespace: /orders");
 
-      this.socket = io(connectionUrl, {
+      this.socket = io(`${connectionUrl}/orders`, {
         transports: ["websocket"],
+
         path: "/api/foodcord/socket.io",
         timeout: 20000,
         forceNew: true,
@@ -58,7 +60,7 @@ export class OrdersWebSocketClient {
           "context" in error ? error.context : "нет контекста"
         );
         console.error("❌ Полная ошибка:", error);
-        console.error("❌ URL подключения:", connectionUrl);
+        console.error("❌ URL подключения:", `${connectionUrl}/orders`);
         console.error("❌ ===== КОНЕЦ ОШИБКИ =====");
         reject(error);
       });
