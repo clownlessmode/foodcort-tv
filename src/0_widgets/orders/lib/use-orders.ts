@@ -350,7 +350,24 @@ export const useOrders = (): UseOrdersReturn => {
 
       setIsLoading(false);
     } catch (err) {
-      console.error("❌ Ошибка подключения:", err);
+      console.error("❌ ===== ОШИБКА В USE-ORDERS =====");
+      console.error("❌ Тип ошибки:", typeof err);
+      console.error("❌ Ошибка:", err);
+
+      if (err instanceof Error) {
+        console.error("❌ Название ошибки:", err.name);
+        console.error("❌ Сообщение:", err.message);
+        console.error("❌ Стек:", err.stack);
+      }
+
+      // Проверяем, является ли это ошибкой Socket.IO
+      if (err && typeof err === "object" && "type" in err) {
+        console.error("❌ Socket.IO тип ошибки:", (err as any).type);
+        console.error("❌ Socket.IO описание:", (err as any).description);
+      }
+
+      console.error("❌ ===== КОНЕЦ ОШИБКИ В USE-ORDERS =====");
+
       setError(
         err instanceof Error ? err.message : "Ошибка подключения к серверу"
       );
