@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   basePath: "/tv-terminal",
+  env: {
+    NEXT_PUBLIC_BASE_PATH: "/tv-terminal",
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
