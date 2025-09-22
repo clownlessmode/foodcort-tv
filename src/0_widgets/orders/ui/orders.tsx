@@ -85,7 +85,7 @@ export const Orders = () => {
                 className="flex items-center justify-center"
               >
                 <span className="text-5xl font-bold text-[#553826]">
-                  {order.id}
+                  {order.id ? order.id.toString().slice(-3) : ""}
                 </span>
               </motion.div>
             ))}
@@ -111,7 +111,7 @@ export const Orders = () => {
                 className="flex items-center justify-center"
               >
                 <span className="text-5xl font-bold text-[#E51C4C]">
-                  {order.id}
+                  {order.id ? order.id.toString().slice(-3) : ""}
                 </span>
               </motion.div>
             ))}
