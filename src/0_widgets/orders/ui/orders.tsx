@@ -32,6 +32,13 @@ export const Orders = () => {
     return "grid-cols-1";
   };
 
+  const formatOrderId = (id: string | number | null | undefined) => {
+    if (id === null || id === undefined) return "";
+    const lastThree = id.toString().slice(-3);
+    const trimmed = lastThree.replace(/^0+/, "");
+    return trimmed || "0";
+  };
+
   if (isLoading) {
     return (
       <div className="col-span-2 flex items-center justify-center">
@@ -85,7 +92,7 @@ export const Orders = () => {
                 className="flex items-center justify-center"
               >
                 <span className="text-5xl font-bold text-[#553826]">
-                  {order.id ? order.id.toString().slice(-3) : ""}
+                  {formatOrderId(order.id)}
                 </span>
               </motion.div>
             ))}
@@ -111,7 +118,7 @@ export const Orders = () => {
                 className="flex items-center justify-center"
               >
                 <span className="text-5xl font-bold text-[#E51C4C]">
-                  {order.id ? order.id.toString().slice(-3) : ""}
+                  {formatOrderId(order.id)}
                 </span>
               </motion.div>
             ))}
