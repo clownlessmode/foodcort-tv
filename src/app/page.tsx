@@ -10,7 +10,7 @@ const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
       `${process.env.NEXT_PUBLIC_API_URL}/banner-tv`,
       { credentials: "include" }
     );
-
+    console.log(response.json());
     return response.json();
   } catch (error) {
     console.error("Failed to fetch advertisements:", error);
@@ -24,7 +24,7 @@ export default async function Home() {
       <Orders />
       <AdvertisementCard
         advertisements={(advertisements.data ?? []).filter(
-          (ad) => ad.isActive && ad.tvNumber === 1
+          (ad) => ad.tvNumber === 1
         )}
         className="w-full h-full col-span-3 object-cover "
       />
