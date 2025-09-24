@@ -10,7 +10,7 @@ const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
       `${process.env.NEXT_PUBLIC_API_URL}/banner-tv`,
       { credentials: "include" }
     );
-    console.log(response.json());
+
     return response.json();
   } catch (error) {
     console.error("Failed to fetch advertisements:", error);
