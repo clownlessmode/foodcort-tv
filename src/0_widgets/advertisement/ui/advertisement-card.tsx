@@ -110,7 +110,7 @@ export const AdvertisementCard = ({
   const ensurePreload = (ad?: IAdvertisement) => {
     if (!ad) return;
     if (readyMap[ad.id]) return;
-    const type = getFileType(ad.url);
+    const type = ad.type ?? getFileType(ad.url);
     if (type === "image") preloadImage(ad);
     else preloadVideo(ad);
   };
@@ -143,7 +143,7 @@ export const AdvertisementCard = ({
     const durationSec =
       durationMap[currentAd.id] ??
       currentAd.seconds ??
-      (getFileType(currentAd.url) === "video"
+      (currentAd.type === "video"
         ? DEFAULT_VIDEO_DURATION_SEC
         : DEFAULT_IMAGE_DURATION_SEC);
 
@@ -205,7 +205,7 @@ export const AdvertisementCard = ({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
             >
-              {getFileType(currentAd.url) === "image" ? (
+              {currentAd.type === "image" ? (
                 <NextImage
                   src={currentAd.url}
                   alt="advertisement"
@@ -233,7 +233,7 @@ export const AdvertisementCard = ({
         {/* Keep next slide mounted invisibly when ready to ensure instant switch */}
         {nextAd && readyMap[nextAd.id] && (
           <div className="absolute inset-0 opacity-0 pointer-events-none">
-            {getFileType(nextAd.url) === "image" ? (
+            {nextAd.type === "image" ? (
               <NextImage
                 src={nextAd.url}
                 alt="advertisement-next"

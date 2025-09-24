@@ -1,8 +1,7 @@
 import {
-  AdvertisementCard,
+  AdvertisementFullscreen,
   IAdvertisementResponse,
 } from "@widgets/advertisement";
-import { Orders } from "@widgets/orders";
 
 const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
   try {
@@ -17,16 +16,16 @@ const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
     return { data: [], success: false } as IAdvertisementResponse;
   }
 };
-export default async function Home() {
+
+export default async function TV2Page() {
   const advertisements = await getAdvertisements();
+
   return (
-    <div className="grid grid-cols-5 min-h-screen">
-      <Orders />
-      <AdvertisementCard
+    <div className="min-h-screen w-full">
+      <AdvertisementFullscreen
         advertisements={(advertisements.data ?? []).filter(
-          (ad) => ad.isActive && ad.tvNumber === 1
+          (ad) => ad.isActive && ad.tvNumber === 2
         )}
-        className="w-full h-full col-span-3 object-cover "
       />
     </div>
   );
