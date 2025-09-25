@@ -8,6 +8,16 @@ import {
   ORDERS_STATUS,
 } from "../../../2_entities/order/config/types";
 
+// Утилита: проверка, что дата относится к сегодняшнему дню (локальное время)
+function isToday(date: Date): boolean {
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
 // Интерфейс для данных заказа с сервера
 interface ServerOrderData {
   orderId?: number;
@@ -38,6 +48,7 @@ export const useOrders = (): UseOrdersReturn => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const wsClientRef = useRef<OrdersWebSocketClient | null>(null);
+  const createdAtRef = useRef<Map<number, Date>>(new Map());
 
   const connect = useCallback(async () => {
     try {
@@ -82,10 +93,18 @@ export const useOrders = (): UseOrdersReturn => {
 
         console.log("📋 Преобразованные заказы:", orders);
 
-        const newOrdersList = orders
+        // Запомним created_at для всех известных заказов
+        for (const o of orders) {
+          createdAtRef.current.set(Number(o.id), o.created_at);
+        }
+
+        // Оставляем только заказы за сегодня
+        const todayOrders = orders.filter((o) => isToday(o.created_at));
+
+        const newOrdersList = todayOrders
           .filter((order) => order.status === ORDERS_STATUS.NEW)
           .sort((a, b) => a.id - b.id); // Сортируем по возрастанию ID (меньшие числа вверху)
-        const completedOrdersList = orders
+        const completedOrdersList = todayOrders
           .filter((order) => order.status === ORDERS_STATUS.COMPLETED)
           .sort((a, b) => a.id - b.id); // Сортируем по возрастанию ID (меньшие числа вверху)
 
@@ -109,16 +128,28 @@ export const useOrders = (): UseOrdersReturn => {
         console.log("🆕 Новый заказ получен (сырые данные):", data);
 
         // Преобразуем данные сервера в формат OrderEntity
+        const createdAt = data.created_at
+          ? new Date(data.created_at)
+          : new Date();
         const order: OrderEntity = {
           id: data.orderId || data.id || 0,
           orderId: data.orderId || data.id || 0,
           status: (data.status as ORDERS_STATUS) || ORDERS_STATUS.NEW,
           phone_number: data.phoneNumber || data.phone_number || "",
           id_store: data.idStore || data.id_store || 0,
-          created_at: new Date(),
+          created_at: createdAt,
           completed_at: null,
           handed_over_at: null,
         };
+
+        // Игнорируем заказы не за сегодняшний день
+        if (!isToday(order.created_at)) {
+          console.log("⏭️ Новый заказ не за сегодня, пропускаем:", order.id);
+          return;
+        }
+
+        // Сохраним created_at
+        createdAtRef.current.set(Number(order.id), order.created_at);
 
         console.log("🆕 Преобразованный заказ:", order);
         console.log("🆕 Статус заказа:", order.status);
@@ -147,6 +178,9 @@ export const useOrders = (): UseOrdersReturn => {
         console.log("📋 Данные обновления:", data);
         console.log("🎯 Заказ ID:", data.orderId);
         console.log("📊 Новый статус:", data.status);
+
+        const knownCreatedAt = createdAtRef.current.get(Number(data.orderId));
+        const isOrderToday = knownCreatedAt ? isToday(knownCreatedAt) : false;
 
         // Простой подход - обновляем каждый список независимо
         if (data.status === ORDERS_STATUS.COMPLETED) {
@@ -179,6 +213,14 @@ export const useOrders = (): UseOrdersReturn => {
 
           // Добавляем в готовые заказы
           setCompletedOrders((prevCompletedOrders) => {
+            // Добавляем только если заказ относится к сегодняшнему дню
+            if (!isOrderToday) {
+              console.log(
+                "⏭️ Заказ не за сегодня, в готовые не добавляем:",
+                data.orderId
+              );
+              return prevCompletedOrders;
+            }
             console.log(
               "🔍 Проверяем готовые заказы:",
               prevCompletedOrders.map((o) => o.id)
@@ -197,7 +239,7 @@ export const useOrders = (): UseOrdersReturn => {
                 status: ORDERS_STATUS.COMPLETED,
                 phone_number: "",
                 id_store: 0,
-                created_at: new Date(),
+                created_at: knownCreatedAt || new Date(),
                 completed_at: new Date(),
                 handed_over_at: null,
               };
@@ -244,6 +286,14 @@ export const useOrders = (): UseOrdersReturn => {
 
           // Добавляем в новые заказы
           setNewOrders((prevNewOrders) => {
+            // Добавляем только если заказ относится к сегодняшнему дню
+            if (!isOrderToday) {
+              console.log(
+                "⏭️ Заказ не за сегодня, в новые не добавляем:",
+                data.orderId
+              );
+              return prevNewOrders;
+            }
             console.log(
               "🔍 Проверяем новые заказы:",
               prevNewOrders.map((o) => o.id)
@@ -262,7 +312,7 @@ export const useOrders = (): UseOrdersReturn => {
                 status: ORDERS_STATUS.NEW,
                 phone_number: "",
                 id_store: 0,
-                created_at: new Date(),
+                created_at: knownCreatedAt || new Date(),
                 completed_at: null,
                 handed_over_at: null,
               };
