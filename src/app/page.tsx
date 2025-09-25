@@ -44,7 +44,7 @@ export default async function Home() {
       <Orders />
       <AdvertisementCard
         advertisements={(advertisements.data ?? []).filter(
-          (ad) => ad.tvNumber === 1
+          (ad) => ad.tvNumber === 2
         )}
         className="w-full h-full col-span-3 object-cover "
       />

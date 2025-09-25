@@ -46,7 +46,7 @@ export default async function TV2Page() {
     <div className="min-h-screen w-full">
       <AdvertisementFullscreen
         advertisements={(advertisements.data ?? []).filter(
-          (ad) => ad.tvNumber === 2
+          (ad) => ad.tvNumber === 1
         )}
       />
     </div>
