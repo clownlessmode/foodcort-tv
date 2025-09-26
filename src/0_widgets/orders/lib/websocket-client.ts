@@ -4,6 +4,11 @@ export class OrdersWebSocketClient {
   private socket: Socket | null = null;
   private isConnected = false;
   private newOrderAudio: HTMLAudioElement | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 10;
+  private baseReconnectDelay = 1000; // 1 секунда
 
   constructor(
     private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || ""
@@ -41,8 +46,9 @@ export class OrdersWebSocketClient {
         timeout: 20000,
         forceNew: true,
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: Infinity, // Бесконечные попытки переподключения
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000, // Максимальная задержка 10 секунд
       });
 
       // Настраиваем звук для новых заказов (в браузере)
@@ -64,9 +70,13 @@ export class OrdersWebSocketClient {
 
       this.socket.on("connect", () => {
         this.isConnected = true;
+        this.reconnectAttempts = 0; // Сбрасываем счетчик попыток при успешном подключении
         console.log("✅ Подключен к серверу заказов");
         console.log("🔗 Socket ID:", this.socket?.id);
         console.log("🔗 Transport:", this.socket?.io.engine.transport.name);
+
+        // Запускаем heartbeat для поддержания соединения
+        this.startHeartbeat();
 
         // Автоматически запрашиваем список заказов при подключении
         this.socket?.emit("get_orders");
@@ -122,9 +132,15 @@ export class OrdersWebSocketClient {
 
       this.socket.on("disconnect", (reason) => {
         this.isConnected = false;
+        this.stopHeartbeat();
         console.log("❌ ===== ОТКЛЮЧЕНИЕ =====");
         console.log("❌ Причина:", reason);
         console.log("❌ ===== КОНЕЦ ОТКЛЮЧЕНИЯ =====");
+
+        // Если это не ручное отключение, пытаемся переподключиться
+        if (reason !== "io client disconnect") {
+          this.scheduleReconnect();
+        }
       });
 
       // Обработчик ошибок WebSocket
@@ -151,10 +167,69 @@ export class OrdersWebSocketClient {
   }
 
   disconnect(): void {
+    this.stopHeartbeat();
+    this.clearReconnectTimeout();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
+    }
+  }
+
+  private startHeartbeat(): void {
+    this.stopHeartbeat(); // Останавливаем предыдущий heartbeat если есть
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket && this.isConnected) {
+        console.log("💓 Отправляем heartbeat...");
+        this.socket.emit("ping");
+      }
+    }, 30000); // Каждые 30 секунд
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log(
+        "❌ Достигнуто максимальное количество попыток переподключения"
+      );
+      return;
+    }
+
+    this.clearReconnectTimeout();
+
+    // Экспоненциальная задержка с джиттером
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts) +
+        Math.random() * 1000,
+      30000 // Максимум 30 секунд
+    );
+
+    this.reconnectAttempts++;
+    console.log(
+      `🔄 Попытка переподключения ${this.reconnectAttempts}/${
+        this.maxReconnectAttempts
+      } через ${Math.round(delay)}мс`
+    );
+
+    this.reconnectTimeout = setTimeout(() => {
+      console.log("🔄 Выполняем переподключение...");
+      this.connect().catch((error) => {
+        console.error("❌ Ошибка при переподключении:", error);
+        this.scheduleReconnect(); // Планируем следующую попытку
+      });
+    }, delay);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
   }
 
@@ -197,5 +272,16 @@ export class OrdersWebSocketClient {
 
   get connected(): boolean {
     return this.isConnected;
+  }
+
+  // Метод для принудительного переподключения
+  forceReconnect(): void {
+    console.log("🔄 Принудительное переподключение...");
+    this.disconnect();
+    this.reconnectAttempts = 0;
+    this.connect().catch((error) => {
+      console.error("❌ Ошибка при принудительном переподключении:", error);
+      this.scheduleReconnect();
+    });
   }
 }
