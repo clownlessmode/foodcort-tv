@@ -10,6 +10,9 @@ export class OrdersWebSocketClient {
   private maxReconnectAttempts = 10;
   private baseReconnectDelay = 1000; // 1 секунда
 
+  // Порядок предпочтения аудио форматов (от лучшего к худшему)
+  private readonly audioFormats = ["mp3", "wav", "aac", "aiff", "wma"];
+
   constructor(
     private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || ""
   ) {}
@@ -53,19 +56,7 @@ export class OrdersWebSocketClient {
 
       // Настраиваем звук для новых заказов (в браузере)
       if (typeof window !== "undefined") {
-        try {
-          const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(
-            /\/$/,
-            ""
-          );
-          const audioPath =
-            `${base}/sounds/neworder.mp3` || "/sounds/neworder.mp3";
-          this.newOrderAudio = new Audio(audioPath);
-          this.newOrderAudio.preload = "auto";
-          this.newOrderAudio.volume = 1.0;
-        } catch (e) {
-          console.warn("⚠️ Не удалось инициализировать звук нового заказа:", e);
-        }
+        this.initializeAudio();
       }
 
       this.socket.on("connect", () => {
@@ -87,14 +78,7 @@ export class OrdersWebSocketClient {
 
       // Локальное воспроизведение звука при получении нового заказа
       this.socket.on("new_order", () => {
-        if (this.newOrderAudio) {
-          try {
-            this.newOrderAudio.currentTime = 0;
-            void this.newOrderAudio.play();
-          } catch (e) {
-            console.warn("⚠️ Не удалось проиграть звук нового заказа:", e);
-          }
-        }
+        this.playNewOrderSound();
       });
 
       // Обработчик подтверждения подключения от сервера
@@ -168,7 +152,10 @@ export class OrdersWebSocketClient {
 
   disconnect(): void {
     this.stopHeartbeat();
-    this.clearReconnectTimeout();
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -201,7 +188,10 @@ export class OrdersWebSocketClient {
       return;
     }
 
-    this.clearReconnectTimeout();
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
 
     // Экспоненциальная задержка с джиттером
     const delay = Math.min(
@@ -226,10 +216,81 @@ export class OrdersWebSocketClient {
     }, delay);
   }
 
-  private clearReconnectTimeout(): void {
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
+  private async initializeAudio(): Promise<void> {
+    const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
+
+    for (const format of this.audioFormats) {
+      try {
+        const audioPath = `${base}/sounds/neworder.${format}`;
+        console.log(`🔊 Пробуем загрузить аудио: ${audioPath}`);
+
+        const audio = new Audio(audioPath);
+        audio.preload = "auto";
+        audio.volume = 1.0;
+
+        // Проверяем, может ли браузер воспроизвести этот формат
+        const canPlay = await this.canPlayAudio(audio);
+
+        if (canPlay) {
+          this.newOrderAudio = audio;
+          console.log(`✅ Успешно инициализирован аудио формат: ${format}`);
+          return;
+        } else {
+          console.log(`❌ Браузер не поддерживает формат: ${format}`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Ошибка при загрузке аудио формата ${format}:`, e);
+      }
+    }
+
+    console.warn("⚠️ Не удалось инициализировать ни один аудио формат");
+  }
+
+  private canPlayAudio(audio: HTMLAudioElement): Promise<boolean> {
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 2000); // 2 секунды на проверку
+
+      const handleCanPlay = () => {
+        clearTimeout(timeout);
+        audio.removeEventListener("canplay", handleCanPlay);
+        audio.removeEventListener("error", handleError);
+        resolve(true);
+      };
+
+      const handleError = () => {
+        clearTimeout(timeout);
+        audio.removeEventListener("canplay", handleCanPlay);
+        audio.removeEventListener("error", handleError);
+        resolve(false);
+      };
+
+      audio.addEventListener("canplay", handleCanPlay);
+      audio.addEventListener("error", handleError);
+
+      // Принудительно запускаем проверку
+      audio.load();
+    });
+  }
+
+  private playNewOrderSound(): void {
+    if (this.newOrderAudio) {
+      try {
+        this.newOrderAudio.currentTime = 0;
+        void this.newOrderAudio.play();
+      } catch (e) {
+        console.warn("⚠️ Не удалось проиграть звук нового заказа:", e);
+        // Если текущий формат не работает, пробуем переинициализировать аудио
+        this.initializeAudio().catch((error) => {
+          console.warn("⚠️ Не удалось переинициализировать аудио:", error);
+        });
+      }
+    } else {
+      console.warn("⚠️ Аудио не инициализировано, пробуем инициализировать...");
+      this.initializeAudio().catch((error) => {
+        console.warn("⚠️ Не удалось инициализировать аудио:", error);
+      });
     }
   }
 
