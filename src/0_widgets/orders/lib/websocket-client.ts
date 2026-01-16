@@ -9,15 +9,95 @@ export class OrdersWebSocketClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
   private baseReconnectDelay = 1000; // 1 секунда
+  private idStore: number | null = null;
+  private storageWatcherInitialized = false;
 
   // Порядок предпочтения аудио форматов (от лучшего к худшему)
   private readonly audioFormats = ["mp3", "wav", "aac", "aiff", "wma"];
 
   constructor(
     private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || ""
-  ) {}
+  ) {
+    if (typeof window !== "undefined") {
+      this.setupLocalStorageWatcher();
+    }
+  }
+
+  // Настройка отслеживания изменений localStorage
+  private setupLocalStorageWatcher(): void {
+    if (this.storageWatcherInitialized) return;
+    this.storageWatcherInitialized = true;
+
+    const checkAndReconnect = () => {
+      const newIdStore = this.getIdStore();
+
+      // Если idStore появился и его не было раньше
+      if (newIdStore && !this.idStore) {
+        console.log("🔄 Обнаружен idStore в localStorage, подключаемся...");
+
+        // Подключаемся
+        this.connect().catch((error) => {
+          console.error("❌ Ошибка при автоматическом подключении:", error);
+        });
+      }
+      // Если idStore изменился и мы уже подключены
+      else if (newIdStore && this.idStore && newIdStore !== this.idStore) {
+        console.log("🔄 idStore изменился, переподключаемся...");
+
+        // Отключаемся и подключаемся заново
+        this.disconnect();
+        this.connect().catch((error) => {
+          console.error("❌ Ошибка при автоматическом переподключении:", error);
+        });
+      }
+      // Если idStore появился, но мы не подключены
+      else if (newIdStore && !this.isConnected) {
+        console.log("🔄 idStore найден, но нет подключения, подключаемся...");
+
+        this.connect().catch((error) => {
+          console.error("❌ Ошибка при автоматическом подключении:", error);
+        });
+      }
+    };
+
+    // Слушаем изменения из других вкладок/окон
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "idStore" || e.key === null) {
+        checkAndReconnect();
+      }
+    };
+
+    // Слушаем изменения в текущей вкладке
+    const handleCustomChange = () => {
+      checkAndReconnect();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("localStorageChange", handleCustomChange);
+  }
+
+  private getIdStore(): number | null {
+    if (typeof window === "undefined") return null;
+
+    try {
+      const idStoreStr = localStorage.getItem("idStore");
+      if (idStoreStr) {
+        const idStore = Number(idStoreStr);
+        return isNaN(idStore) ? null : idStore;
+      }
+    } catch (e) {
+      console.warn("Ошибка при получении idStore:", e);
+    }
+    return null;
+  }
 
   connect(): Promise<void> {
+    this.idStore = this.getIdStore();
+
+    if (!this.idStore) {
+      return Promise.reject(new Error("Нет idStore в localStorage"));
+    }
+    
     return new Promise((resolve, reject) => {
       // Derive origin and socket path from serverUrl
       let origin = this.serverUrl;
@@ -69,17 +149,24 @@ export class OrdersWebSocketClient {
         // Запускаем heartbeat для поддержания соединения
         this.startHeartbeat();
 
-        // Автоматически запрашиваем список заказов при подключении
-        this.socket?.emit("get_orders");
+        this.idStore = this.getIdStore();
+        if (this.idStore) {
+          // Автоматически запрашиваем список заказов при подключении
+          this.socket?.emit("get_orders", this.idStore);
+        } else {
+          console.error("❌ Не удалось получить получить данные о заказах");
+        }
         console.log("📋 Запрашиваем список заказов...");
 
         resolve();
       });
 
-      // Локальное воспроизведение звука при получении нового заказа
-      this.socket.on("new_order", () => {
-        this.playNewOrderSound();
-      });
+      if (this.idStore) {
+        // Локальное воспроизведение звука при получении нового заказа
+        this.socket.on(`new_order_${this.idStore}`, () => {
+          this.playNewOrderSound();
+        });
+      }
 
       // Обработчик подтверждения подключения от сервера
       this.socket.on("connection_confirmed", (data) => {
@@ -296,7 +383,13 @@ export class OrdersWebSocketClient {
 
   onNewOrder(callback: (order: unknown) => void): void {
     if (this.socket) {
-      this.socket.on("new_order", callback);
+      this.idStore = this.getIdStore();
+
+      if (this.idStore) {
+        this.socket.on(`new_order_${this.idStore}`, callback);
+      } else {
+        console.error("❌ Не удалось получить получить данные о заказах");
+      }
     }
   }
 
@@ -315,7 +408,13 @@ export class OrdersWebSocketClient {
 
   onOrdersList(callback: (orders: unknown[]) => void): void {
     if (this.socket) {
-      this.socket.on("orders_list", callback);
+      this.socket.on(`orders_list_${this.idStore}`, callback);
+    }
+  }
+
+  onJoinPairingRoom(callback: (idStore: number) => void): void {
+    if (this.socket) {
+      this.socket.on("store_assigned", callback);
     }
   }
 

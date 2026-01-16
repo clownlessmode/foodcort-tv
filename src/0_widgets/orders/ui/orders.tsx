@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import React from "react";
 import { orderVariants } from "../config";
 import { useOrders } from "../lib/use-orders";
 import { OrderEntity } from "../../../2_entities/order/config/types";
