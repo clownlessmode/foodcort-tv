@@ -12,16 +12,17 @@ import {
   IAdvertisementResponse,
 } from "../config";
 import { getFileType } from "@shared/lib/get-file-type";
+import { usePadConnection } from "@features/pad-connection";
 
 type ReadyMap = Record<number, boolean>;
 type DurationMap = Record<number, number>;
 
-const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
+const getAdvertisements = async (idStore: number): Promise<IAdvertisementResponse> => {
   try {
     const baseUrl =
       `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "")}/api/foodcord` ||
       "https://statosphera.ru/api/foodcord";
-    const url = `${baseUrl}/banner-tv/get-all-store-bunner-tv/42014`;
+    const url = `${baseUrl}/banner-tv/get-all-store-bunner-tv/${idStore}`;
     const response = await fetch(url, {
       cache: "no-store",
       headers: { accept: "application/json" },
@@ -45,13 +46,15 @@ const getAdvertisements = async (): Promise<IAdvertisementResponse> => {
 };
 
 export const AdvertisementConnectedFullscreen = () => {
+  const { idStore } = usePadConnection();
   const [ads, setAds] = useState<IAdvertisement[]>([]);
 
   useEffect(() => {
-    getAdvertisements().then((data) => {
+    if (!idStore) return;
+    getAdvertisements(idStore).then((data) => {
       setAds(data.data);
     });
-  }, []);
+  }, [idStore]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [readyMap, setReadyMap] = useState<ReadyMap>({});

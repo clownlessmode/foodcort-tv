@@ -1,15 +1,14 @@
 import { AdvertisementConnectedFullscreen } from "@widgets/advertisement/ui/advertisement-connected-fullscreen";
-import { ConnectionWrapper } from "@widgets/pad-connection/ui/connection-wrapper";
-import { PadConnection } from "@widgets/pad-connection/ui/pad-connection";
+import { TvLayout } from "@widgets/tv-layout";
 
 export const dynamic = "force-dynamic";
 
 export default async function TV2Page() {
-return (
-    <ConnectionWrapper fallback={<PadConnection />}>
+  return (
+    <TvLayout>
       <div className="min-h-screen w-full">
         <AdvertisementConnectedFullscreen />
       </div>
-    </ConnectionWrapper>
+    </TvLayout>
   );
 }

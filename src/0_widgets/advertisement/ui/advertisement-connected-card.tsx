@@ -1,10 +1,10 @@
 "use client";
 
+import { usePadConnection } from "@features/pad-connection";
 import {
   AdvertisementCard,
   IAdvertisementResponse,
 } from "@widgets/advertisement";
-import { usePadConnection } from "@widgets/pad-connection/lib/use-pad-connection";
 import { useEffect, useState } from "react";
 
 const getAdvertisements = async (idStore: number): Promise<IAdvertisementResponse> => {

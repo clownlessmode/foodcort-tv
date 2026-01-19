@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { StorageInitializer } from "@shared/lib/storage-initializer";
 
 const font = IBM_Plex_Sans({
   variable: "--font",
@@ -19,7 +20,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="light">
-      <body className={`${font.className} antialiased`}>{children}</body>
+      <body className={`${font.className} antialiased`}>
+        <StorageInitializer />
+        {children}
+      </body>
     </html>
   );
 }
