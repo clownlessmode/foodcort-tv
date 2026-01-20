@@ -10,9 +10,10 @@ import { useEffect, useState } from "react";
 const getAdvertisements = async (idStore: number): Promise<IAdvertisementResponse> => {
   try {
     const baseUrl =
-      `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "")}/api/foodcord` ||
+      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
       "https://statosphera.ru/api/foodcord";
     const url = `${baseUrl}/banner-tv/get-all-store-bunner-tv/${idStore}`;
+    
     const response = await fetch(url, {
       cache: "no-store",
       headers: { accept: "application/json" },

@@ -10,15 +10,26 @@ export const PadConnection = () => {
   const { reconnect } = usePadConnectionCtx();
 
   const generateCode = async () => {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "")}/api/foodcord/device-communication/tv-generate-code`
-    );
-    const data = await response.json();
+    try {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
+        "https://statosphera.ru/api/foodcord";
+      const url = `${baseUrl}/device-communication/tv-generate-code`;
 
-    localStorage.setItem("code", String(data.code));
-    reconnect();
+      const response = await fetch(url);
+      const data = await response.json();
 
-    return data.code as number;
+      if (data && data.code) {
+        localStorage.setItem("code", String(data.code));
+        reconnect();
+        return data.code as number;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Failed to get idStore:", error);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -33,7 +44,7 @@ export const PadConnection = () => {
       return;
     }
 
-    generateCode().then((c) => setCode(c)).catch(console.error);
+    generateCode().then((data) => setCode(data));
   }, []);
 
   return (
