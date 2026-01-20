@@ -209,8 +209,8 @@ export const AdvertisementCard = ({
                 <NextImage
                   src={currentAd.url}
                   alt="advertisement"
-                  width={2184}
-                  height={2160}
+                  width={1092}
+                  height={1080}
                   priority
                   className="w-full h-full object-cover"
                 />
@@ -237,8 +237,8 @@ export const AdvertisementCard = ({
               <NextImage
                 src={nextAd.url}
                 alt="advertisement-next"
-                width={2184}
-                height={2160}
+                width={1092}
+                height={1080}
                 className="w-full h-full object-cover"
               />
             ) : (

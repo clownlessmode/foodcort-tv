@@ -207,8 +207,8 @@ export const AdvertisementFullscreen = ({
                 <NextImage
                   src={currentAd.url}
                   alt="advertisement"
-                  width={3840}
-                  height={2160}
+                  width={1920}
+                  height={1080}
                   priority
                   className="w-full h-full object-cover"
                 />
@@ -235,8 +235,8 @@ export const AdvertisementFullscreen = ({
               <NextImage
                 src={nextAd.url}
                 alt="advertisement-next"
-                width={3840}
-                height={2160}
+                width={1920}
+                height={1080}
                 className="w-full h-full object-cover"
               />
             ) : (
