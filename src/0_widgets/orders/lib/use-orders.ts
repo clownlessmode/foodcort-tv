@@ -55,10 +55,14 @@ export const useOrders = (): UseOrdersReturn => {
       setIsLoading(true);
       setError(null);
 
+      if (wsClientRef.current) {
+        wsClientRef.current.disconnect();
+        wsClientRef.current = null;
+      }
+      
       const client = new OrdersWebSocketClient();
-      await client.connect();
-
       wsClientRef.current = client;
+      await client.connect();
 
       // Обработчик подтверждения подключения
       client.onConnectionConfirmed((data) => {
@@ -438,6 +442,7 @@ export const useOrders = (): UseOrdersReturn => {
     return () => {
       if (wsClientRef.current) {
         wsClientRef.current.disconnect();
+        wsClientRef.current = null;
       }
     };
   }, [connect]);

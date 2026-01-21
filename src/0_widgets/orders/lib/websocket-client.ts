@@ -4,7 +4,6 @@ export class OrdersWebSocketClient {
   private socket: Socket | null = null;
   private isConnected = false;
   private newOrderAudio: HTMLAudioElement | null = null;
-  private heartbeatInterval: NodeJS.Timeout | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
@@ -15,9 +14,7 @@ export class OrdersWebSocketClient {
   // Порядок предпочтения аудио форматов (от лучшего к худшему)
   private readonly audioFormats = ["mp3", "wav", "aac", "aiff", "wma"];
 
-  constructor(
-    private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || ""
-  ) {
+  constructor(private serverUrl: string = "http://localhost:3444/" || "") {
     if (typeof window !== "undefined") {
       this.setupLocalStorageWatcher();
     }
@@ -132,6 +129,7 @@ export class OrdersWebSocketClient {
         reconnectionAttempts: Infinity, // Бесконечные попытки переподключения
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000, // Максимальная задержка 10 секунд
+        randomizationFactor: 0.5,
       });
 
       // Настраиваем звук для новых заказов (в браузере)
@@ -145,9 +143,6 @@ export class OrdersWebSocketClient {
         console.log("✅ Подключен к серверу заказов");
         console.log("🔗 Socket ID:", this.socket?.id);
         console.log("🔗 Transport:", this.socket?.io.engine.transport.name);
-
-        // Запускаем heartbeat для поддержания соединения
-        this.startHeartbeat();
 
         this.idStore = this.getIdStore();
         if (this.idStore) {
@@ -203,15 +198,9 @@ export class OrdersWebSocketClient {
 
       this.socket.on("disconnect", (reason) => {
         this.isConnected = false;
-        this.stopHeartbeat();
         console.log("❌ ===== ОТКЛЮЧЕНИЕ =====");
         console.log("❌ Причина:", reason);
         console.log("❌ ===== КОНЕЦ ОТКЛЮЧЕНИЯ =====");
-
-        // Если это не ручное отключение, пытаемся переподключиться
-        if (reason !== "io client disconnect") {
-          this.scheduleReconnect();
-        }
       });
 
       // Обработчик ошибок WebSocket
@@ -238,7 +227,6 @@ export class OrdersWebSocketClient {
   }
 
   disconnect(): void {
-    this.stopHeartbeat();
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -247,23 +235,6 @@ export class OrdersWebSocketClient {
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
-    }
-  }
-
-  private startHeartbeat(): void {
-    this.stopHeartbeat(); // Останавливаем предыдущий heartbeat если есть
-    this.heartbeatInterval = setInterval(() => {
-      if (this.socket && this.isConnected) {
-        console.log("💓 Отправляем heartbeat...");
-        this.socket.emit("ping");
-      }
-    }, 30000); // Каждые 30 секунд
-  }
-
-  private stopHeartbeat(): void {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
     }
   }
 
