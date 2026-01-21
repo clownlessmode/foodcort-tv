@@ -3,7 +3,6 @@ import { io, Socket } from "socket.io-client";
 export class OrdersWebSocketClient {
   private socket: Socket | null = null;
   private isConnected = false;
-  private newOrderAudio: HTMLAudioElement | null = null;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 10;
@@ -11,10 +10,7 @@ export class OrdersWebSocketClient {
   private idStore: number | null = null;
   private storageWatcherInitialized = false;
 
-  // Порядок предпочтения аудио форматов (от лучшего к худшему)
-  private readonly audioFormats = ["mp3", "wav", "aac", "aiff", "wma"];
-
-  constructor(private serverUrl: string = "http://localhost:3444/" || "") {
+  constructor(private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || "") {
     if (typeof window !== "undefined") {
       this.setupLocalStorageWatcher();
     }
@@ -132,11 +128,6 @@ export class OrdersWebSocketClient {
         randomizationFactor: 0.5,
       });
 
-      // Настраиваем звук для новых заказов (в браузере)
-      if (typeof window !== "undefined") {
-        this.initializeAudio();
-      }
-
       this.socket.on("connect", () => {
         this.isConnected = true;
         this.reconnectAttempts = 0; // Сбрасываем счетчик попыток при успешном подключении
@@ -155,13 +146,6 @@ export class OrdersWebSocketClient {
 
         resolve();
       });
-
-      if (this.idStore) {
-        // Локальное воспроизведение звука при получении нового заказа
-        this.socket.on(`new_order_${this.idStore}`, () => {
-          this.playNewOrderSound();
-        });
-      }
 
       // Обработчик подтверждения подключения от сервера
       this.socket.on("connection_confirmed", (data) => {
@@ -272,84 +256,6 @@ export class OrdersWebSocketClient {
         this.scheduleReconnect(); // Планируем следующую попытку
       });
     }, delay);
-  }
-
-  private async initializeAudio(): Promise<void> {
-    const base = (process.env.NEXT_PUBLIC_BASE_PATH || "").replace(/\/$/, "");
-
-    for (const format of this.audioFormats) {
-      try {
-        const audioPath = `${base}/sounds/neworder.${format}`;
-        console.log(`🔊 Пробуем загрузить аудио: ${audioPath}`);
-
-        const audio = new Audio(audioPath);
-        audio.preload = "auto";
-        audio.volume = 1.0;
-
-        // Проверяем, может ли браузер воспроизвести этот формат
-        const canPlay = await this.canPlayAudio(audio);
-
-        if (canPlay) {
-          this.newOrderAudio = audio;
-          console.log(`✅ Успешно инициализирован аудио формат: ${format}`);
-          return;
-        } else {
-          console.log(`❌ Браузер не поддерживает формат: ${format}`);
-        }
-      } catch (e) {
-        console.warn(`⚠️ Ошибка при загрузке аудио формата ${format}:`, e);
-      }
-    }
-
-    console.warn("⚠️ Не удалось инициализировать ни один аудио формат");
-  }
-
-  private canPlayAudio(audio: HTMLAudioElement): Promise<boolean> {
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        resolve(false);
-      }, 2000); // 2 секунды на проверку
-
-      const handleCanPlay = () => {
-        clearTimeout(timeout);
-        audio.removeEventListener("canplay", handleCanPlay);
-        audio.removeEventListener("error", handleError);
-        resolve(true);
-      };
-
-      const handleError = () => {
-        clearTimeout(timeout);
-        audio.removeEventListener("canplay", handleCanPlay);
-        audio.removeEventListener("error", handleError);
-        resolve(false);
-      };
-
-      audio.addEventListener("canplay", handleCanPlay);
-      audio.addEventListener("error", handleError);
-
-      // Принудительно запускаем проверку
-      audio.load();
-    });
-  }
-
-  private playNewOrderSound(): void {
-    if (this.newOrderAudio) {
-      try {
-        this.newOrderAudio.currentTime = 0;
-        void this.newOrderAudio.play();
-      } catch (e) {
-        console.warn("⚠️ Не удалось проиграть звук нового заказа:", e);
-        // Если текущий формат не работает, пробуем переинициализировать аудио
-        this.initializeAudio().catch((error) => {
-          console.warn("⚠️ Не удалось переинициализировать аудио:", error);
-        });
-      }
-    } else {
-      console.warn("⚠️ Аудио не инициализировано, пробуем инициализировать...");
-      this.initializeAudio().catch((error) => {
-        console.warn("⚠️ Не удалось инициализировать аудио:", error);
-      });
-    }
   }
 
   onNewOrder(callback: (order: unknown) => void): void {
