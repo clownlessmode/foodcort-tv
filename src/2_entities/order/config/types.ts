@@ -7,6 +7,7 @@ export enum ORDERS_STATUS {
 
 export interface OrderEntity {
   id: number;
+  daily_id: number;
   orderId: number;
   status: ORDERS_STATUS;
   phone_number: string;
