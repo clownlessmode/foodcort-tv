@@ -22,6 +22,8 @@ function isToday(date: Date): boolean {
 interface ServerOrderData {
   orderId?: number;
   id?: number;
+  daily_id?: number;
+  dailyId?: number;
   status?: string;
   phoneNumber?: string;
   phone_number?: string;
@@ -49,6 +51,12 @@ export const useOrders = (): UseOrdersReturn => {
   const [error, setError] = useState<string | null>(null);
   const wsClientRef = useRef<OrdersWebSocketClient | null>(null);
   const createdAtRef = useRef<Map<number, Date>>(new Map());
+  const dailyIdRef = useRef<Map<number, number>>(new Map());
+  // Следующий номер для отображения, если сервер не присылает daily_id в new_order
+  const nextDailyIdRef = useRef(0);
+  // При переносе заказа между списками сохраняем полный объект, чтобы не терять daily_id
+  const orderMovingToCompletedRef = useRef<OrderEntity | null>(null);
+  const orderMovingToNewRef = useRef<OrderEntity | null>(null);
 
   const connect = useCallback(async () => {
     try {
@@ -77,8 +85,10 @@ export const useOrders = (): UseOrdersReturn => {
         // Преобразуем данные сервера в формат OrderEntity
         const orders: OrderEntity[] = ordersData.map((orderData: unknown) => {
           const data = orderData as ServerOrderData;
+          const dailyId = data.daily_id ?? data.dailyId ?? 0;
           return {
             id: data.orderId || data.id || 0,
+            daily_id: dailyId,
             orderId: data.orderId || data.id || 0,
             status: (data.status as ORDERS_STATUS) || ORDERS_STATUS.NEW,
             phone_number: data.phoneNumber || data.phone_number || "",
@@ -97,9 +107,13 @@ export const useOrders = (): UseOrdersReturn => {
 
         console.log("📋 Преобразованные заказы:", orders);
 
-        // Запомним created_at для всех известных заказов
+        // Запомним created_at и daily_id для всех известных заказов; обновим счётчик для следующих номеров
         for (const o of orders) {
           createdAtRef.current.set(Number(o.id), o.created_at);
+          dailyIdRef.current.set(Number(o.id), o.daily_id);
+          if (o.daily_id > nextDailyIdRef.current) {
+            nextDailyIdRef.current = o.daily_id;
+          }
         }
 
         // Оставляем только заказы за сегодня
@@ -131,12 +145,22 @@ export const useOrders = (): UseOrdersReturn => {
         const data = orderData as ServerOrderData;
         console.log("🆕 Новый заказ получен (сырые данные):", data);
 
+        // daily_id может приходить как daily_id или dailyId; если нет — присваиваем следующий номер
+        let dailyId = data.daily_id ?? data.dailyId ?? 0;
+        if (dailyId <= 0) {
+          nextDailyIdRef.current += 1;
+          dailyId = nextDailyIdRef.current;
+        } else if (dailyId > nextDailyIdRef.current) {
+          nextDailyIdRef.current = dailyId;
+        }
+
         // Преобразуем данные сервера в формат OrderEntity
         const createdAt = data.created_at
           ? new Date(data.created_at)
           : new Date();
         const order: OrderEntity = {
           id: data.orderId || data.id || 0,
+          daily_id: dailyId,
           orderId: data.orderId || data.id || 0,
           status: (data.status as ORDERS_STATUS) || ORDERS_STATUS.NEW,
           phone_number: data.phoneNumber || data.phone_number || "",
@@ -152,8 +176,9 @@ export const useOrders = (): UseOrdersReturn => {
           return;
         }
 
-        // Сохраним created_at
+        // Сохраним created_at и daily_id
         createdAtRef.current.set(Number(order.id), order.created_at);
+        dailyIdRef.current.set(Number(order.id), order.daily_id);
 
         console.log("🆕 Преобразованный заказ:", order);
         console.log("🆕 Статус заказа:", order.status);
@@ -201,6 +226,12 @@ export const useOrders = (): UseOrdersReturn => {
             );
             if (foundInNew) {
               console.log("✅ НАЙДЕН заказ в новых, УДАЛЯЕМ:", data.orderId);
+              orderMovingToCompletedRef.current = {
+                ...foundInNew,
+                status: ORDERS_STATUS.COMPLETED,
+                completed_at: new Date(),
+                handed_over_at: null,
+              };
               const newList = prevNewOrders.filter(
                 (order) => Number(order.id) !== Number(data.orderId)
               );
@@ -237,17 +268,29 @@ export const useOrders = (): UseOrdersReturn => {
                 "✅ Заказ НЕ НАЙДЕН в готовых, ДОБАВЛЯЕМ:",
                 data.orderId
               );
-              const tempOrder: OrderEntity = {
-                id: data.orderId,
-                orderId: data.orderId,
-                status: ORDERS_STATUS.COMPLETED,
-                phone_number: "",
-                id_store: 0,
-                created_at: knownCreatedAt || new Date(),
-                completed_at: new Date(),
-                handed_over_at: null,
-              };
-              const newList = [...prevCompletedOrders, tempOrder].sort(
+              const movedOrder = orderMovingToCompletedRef.current;
+              const orderToAdd: OrderEntity =
+                movedOrder && Number(movedOrder.id) === Number(data.orderId)
+                  ? (() => {
+                      orderMovingToCompletedRef.current = null;
+                      return movedOrder;
+                    })()
+                  : {
+                      id: data.orderId,
+                      daily_id:
+                        dailyIdRef.current.get(Number(data.orderId)) ??
+                        data.daily_id ??
+                        (data as ServerOrderData).dailyId ??
+                        0,
+                      orderId: data.orderId,
+                      status: ORDERS_STATUS.COMPLETED,
+                      phone_number: "",
+                      id_store: 0,
+                      created_at: knownCreatedAt || new Date(),
+                      completed_at: new Date(),
+                      handed_over_at: null,
+                    };
+              const newList = [...prevCompletedOrders, orderToAdd].sort(
                 (a, b) => a.id - b.id
               );
               console.log(
@@ -274,6 +317,12 @@ export const useOrders = (): UseOrdersReturn => {
             );
             if (foundInCompleted) {
               console.log("✅ НАЙДЕН заказ в готовых, УДАЛЯЕМ:", data.orderId);
+              orderMovingToNewRef.current = {
+                ...foundInCompleted,
+                status: ORDERS_STATUS.NEW,
+                completed_at: null,
+                handed_over_at: null,
+              };
               const newList = prevCompletedOrders.filter(
                 (order) => Number(order.id) !== Number(data.orderId)
               );
@@ -310,17 +359,29 @@ export const useOrders = (): UseOrdersReturn => {
                 "✅ Заказ НЕ НАЙДЕН в новых, ДОБАВЛЯЕМ:",
                 data.orderId
               );
-              const tempOrder: OrderEntity = {
-                id: data.orderId,
-                orderId: data.orderId,
-                status: ORDERS_STATUS.NEW,
-                phone_number: "",
-                id_store: 0,
-                created_at: knownCreatedAt || new Date(),
-                completed_at: null,
-                handed_over_at: null,
-              };
-              const newList = [...prevNewOrders, tempOrder].sort(
+              const movedOrder = orderMovingToNewRef.current;
+              const orderToAdd: OrderEntity =
+                movedOrder && Number(movedOrder.id) === Number(data.orderId)
+                  ? (() => {
+                      orderMovingToNewRef.current = null;
+                      return movedOrder;
+                    })()
+                  : {
+                      id: data.orderId,
+                      daily_id:
+                        dailyIdRef.current.get(Number(data.orderId)) ??
+                        data.daily_id ??
+                        (data as ServerOrderData).dailyId ??
+                        0,
+                      orderId: data.orderId,
+                      status: ORDERS_STATUS.NEW,
+                      phone_number: "",
+                      id_store: 0,
+                      created_at: knownCreatedAt || new Date(),
+                      completed_at: null,
+                      handed_over_at: null,
+                    };
+              const newList = [...prevNewOrders, orderToAdd].sort(
                 (a, b) => a.id - b.id
               );
               console.log(

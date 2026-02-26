@@ -273,6 +273,7 @@ export class OrdersWebSocketClient {
   onOrderStatusUpdate(
     callback: (data: {
       orderId: number;
+      daily_id: number;
       status: string;
       updatedBy: string;
       timestamp: string;

@@ -3,11 +3,24 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary: hsl(346 84% 50%);
+  --accent: oklch(70.4% 0.04 256.788);
+  --muted: oklch(98.4% 0.003 247.858);
+  --muted-foreground: oklch(55.4% 0.046 257.417);
+  --border: oklch(96.8% 0.007 247.896);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+
+  --breakpoint-4k: 3840px;
+  --radius-6xl: 3rem;
 }
 
 body {

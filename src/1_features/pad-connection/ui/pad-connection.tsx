@@ -11,9 +11,7 @@ export const PadConnection = () => {
 
   const generateCode = async () => {
     try {
-      const baseUrl =
-        process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-        "https://statosphera.ru/api/foodcord";
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
       const url = `${baseUrl}/device-communication/tv-generate-code`;
 
       const response = await fetch(url);

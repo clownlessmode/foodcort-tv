@@ -7,9 +7,7 @@ export const dynamic = "force-dynamic";
 
 const getAdvertisements = async (id: string): Promise<IAdvertisementResponse> => {
   try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ||
-      "https://statosphera.ru/api/foodcord";
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "";
     const url = `${baseUrl}/banner-tv/get-all-store-bunner-tv/${id}`;
     
     const response = await fetch(url, {
