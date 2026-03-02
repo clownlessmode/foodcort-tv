@@ -26,8 +26,8 @@ export const AdvertisementFullscreen = ({
   const [readyMap, setReadyMap] = useState<ReadyMap>({});
   const [durationMap, setDurationMap] = useState<DurationMap>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [pendingNextId, setPendingNextId] = useState<number | null>(null);
-  const [tick, setTick] = useState(0);
 
   const currentAd: IAdvertisement | undefined = useMemo(() => {
     if (!ads.length) return undefined;
@@ -151,20 +151,25 @@ export const AdvertisementFullscreen = ({
       timerRef.current = null;
     }
 
-    timerRef.current = setTimeout(() => {
+    const run = () => {
       if (!ads.length) return;
       const candidateIndex = (currentIndex + 1) % ads.length;
       const candidateId = ads[candidateIndex].id;
-      // If next not ready, wait until it gets ready
       if (readyMap[candidateId]) {
         setCurrentIndex(candidateIndex);
         if (candidateIndex === currentIndex) {
-          setTick((t) => t + 1);
+          if (videoRef.current) {
+            videoRef.current.currentTime = 0;
+            videoRef.current.play();
+          }
+          timerRef.current = setTimeout(run, Math.max(0, durationSec * 1000));
         }
       } else {
         setPendingNextId(candidateId);
       }
-    }, Math.max(0, durationSec * 1000));
+    };
+
+    timerRef.current = setTimeout(run, Math.max(0, durationSec * 1000));
 
     return () => {
       if (timerRef.current) {
@@ -177,7 +182,6 @@ export const AdvertisementFullscreen = ({
     readyMap[currentAd?.id ?? -1],
     durationMap[currentAd?.id ?? -1],
     ads.length,
-    tick,
   ]);
 
   // If a next slide was pending and is now ready, advance immediately
@@ -201,7 +205,7 @@ export const AdvertisementFullscreen = ({
         <AnimatePresence initial={false}>
           {currentAd && isFirstReady && (
             <motion.div
-              key={`${currentAd.id}-${tick}`}
+              key={currentAd.id}
               className="absolute inset-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -219,6 +223,7 @@ export const AdvertisementFullscreen = ({
                 />
               ) : (
                 <video
+                  ref={videoRef}
                   key={currentAd.id}
                   src={currentAd.url}
                   className="w-full h-full object-cover"
