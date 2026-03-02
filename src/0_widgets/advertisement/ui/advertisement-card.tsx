@@ -29,6 +29,7 @@ export const AdvertisementCard = ({
   const [durationMap, setDurationMap] = useState<DurationMap>({});
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingNextId, setPendingNextId] = useState<number | null>(null);
+  const [tick, setTick] = useState(0);
 
   const currentAd: IAdvertisement | undefined = useMemo(() => {
     if (!ads.length) return undefined;
@@ -159,6 +160,9 @@ export const AdvertisementCard = ({
       // If next not ready, wait until it gets ready
       if (readyMap[candidateId]) {
         setCurrentIndex(candidateIndex);
+        if (candidateIndex === currentIndex) {
+          setTick((t) => t + 1);
+        }
       } else {
         setPendingNextId(candidateId);
       }
@@ -175,6 +179,7 @@ export const AdvertisementCard = ({
     readyMap[currentAd?.id ?? -1],
     durationMap[currentAd?.id ?? -1],
     ads.length,
+    tick,
   ]);
 
   // If a next slide was pending and is now ready, advance immediately
@@ -198,7 +203,7 @@ export const AdvertisementCard = ({
         <AnimatePresence initial={false}>
           {currentAd && isFirstReady && (
             <motion.div
-              key={currentAd.id}
+              key={`${currentAd.id}-${tick}`}
               className="absolute inset-0"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
