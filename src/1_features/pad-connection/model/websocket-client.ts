@@ -6,7 +6,7 @@ export class OrdersWebSocketClient {
   private storedCallback: ((data: { idStore: number }) => void) | null = null;
 
   constructor(
-    private serverUrl: string = process.env.NEXT_PUBLIC_API_URL || ""
+    private serverUrl: string = "http://10.1.0.194:3444" || ""
   ) {}
 
   connect(code: number): Promise<void> {
