@@ -7,7 +7,7 @@ import { useOrders } from "../lib/use-orders";
 import { OrderEntity } from "../../../2_entities/order/config/types";
 import clsx from "clsx";
 
-const ORDERS_PER_PAGE = 12;
+const ORDERS_PER_PAGE = 16;
 const PAGE_INTERVAL_MS = 7000;
 
 export const Orders = () => {
@@ -36,7 +36,7 @@ export const Orders = () => {
     return trimmed || "0";
   };
 
-  // Разбивка на страницы: по 12 заказов, переключение каждые 5 сек
+  // Разбивка на страницы: по 16 заказов, переключение каждые 5 сек
   const newOrderPages = Math.max(1, Math.ceil(newOrders.length / ORDERS_PER_PAGE));
   const completedOrderPages = Math.max(1, Math.ceil(completedOrders.length / ORDERS_PER_PAGE));
   const newPageIndex = currentPage % newOrderPages;
@@ -63,10 +63,10 @@ export const Orders = () => {
     return (
       <div className="col-span-2 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl font-bold text-[#553826] mb-2">
+          <div className="text-2xl font-bold text-primary mb-2">
             Подключение к серверу...
           </div>
-          <div className="w-8 h-8 border-4 border-[#553826] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
@@ -76,13 +76,13 @@ export const Orders = () => {
     return (
       <div className="col-span-2 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl font-bold text-red-600 mb-4">
+          <div className="text-2xl font-bold text-primary mb-4">
             Ошибка подключения
           </div>
-          <div className="text-lg text-gray-600 mb-4">{error}</div>
+          <div className="text-lg text-muted-foreground mb-4">{error}</div>
           <button
             onClick={reconnect}
-            className="px-6 py-2 bg-[#553826] text-white rounded-lg hover:bg-[#6b4a32] transition-colors"
+            className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors"
           >
             Переподключиться
           </button>
