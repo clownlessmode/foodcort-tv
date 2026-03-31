@@ -13,6 +13,7 @@ import {
 } from "../config";
 import { getFileType } from "@shared/lib/get-file-type";
 import { usePadConnection } from "@features/pad-connection";
+import { useSearchParams } from "next/navigation";
 
 type ReadyMap = Record<number, boolean>;
 type DurationMap = Record<number, number>;
@@ -46,13 +47,15 @@ const getAdvertisements = async (idStore: number): Promise<IAdvertisementRespons
 
 export const AdvertisementConnectedFullscreen = () => {
   const { idStore } = usePadConnection();
+  const searchParams = useSearchParams();
+  const tvNumber = Number(searchParams.get("tv")) || 1;
   const [ads, setAds] = useState<IAdvertisement[]>([]);
 
   useEffect(() => {
     if (!idStore) return;
     getAdvertisements(idStore).then((data) => {
       setAds((data.data ?? []).filter(
-        (ad) => ad.tvNumber === 1
+        (ad) => ad.tvNumber === tvNumber
       ));
     });
   }, [idStore]);
