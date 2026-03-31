@@ -6,6 +6,7 @@ import {
   IAdvertisementResponse,
 } from "@widgets/advertisement";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 const getAdvertisements = async (idStore: number): Promise<IAdvertisementResponse> => {
   try {
@@ -35,6 +36,8 @@ const getAdvertisements = async (idStore: number): Promise<IAdvertisementRespons
 
 export const AdvertisementConnectedCard = () => {
   const { idStore } = usePadConnection();
+  const searchParams = useSearchParams();
+  const tvNumber = Number(searchParams.get("tv")) || 2;
   const [advertisements, setAdvertisements] = useState<IAdvertisementResponse>({
     data: [],
     success: false,
@@ -48,12 +51,12 @@ export const AdvertisementConnectedCard = () => {
   }, [idStore]);
 
   console.log(advertisements.data.filter(
-    (ad) => ad.tvNumber === 2
+    (ad) => ad.tvNumber === tvNumber
   ));
   return (
     <AdvertisementCard
       advertisements={(advertisements.data ?? []).filter(
-        (ad) => ad.tvNumber === 2
+        (ad) => ad.tvNumber === tvNumber
       )}
       className="w-full h-full col-span-3 object-cover"
     />
