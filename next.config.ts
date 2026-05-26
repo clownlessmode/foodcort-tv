@@ -46,6 +46,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "826d0f1c-f5de-47aa-b1a1-a0190a1d5c7c.selstorage.ru",
       },
+      {
+        protocol: "https",
+        hostname: "1c945026-b107-4f48-9262-58e1287c070f.selstorage.ru",
+      },
     ],
   },
 };
